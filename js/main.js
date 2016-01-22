@@ -66,7 +66,7 @@ var main = {
 
     this.game.stage.backgroundColor = 0x4ec0ca;
 
-    this.game.world.setBounds(0, 0, 2*width, height);
+    this.game.world.setBounds(0, 0, 1.5*width, height);
 
     this.setBackground();
 
@@ -82,7 +82,6 @@ var main = {
 
     this.game.physics.arcade.enable(this.player);
     this.player.body.allowGravity = false;
-    // this.player.body.collideWorldBounds = true;
 
     this.tutorialImage = this.game.add.image(width/2, this.game.world.height/2 - 35*this.scale, 'splash');
     this.tutorialImage.scale.setTo(this.scale, this.scale);
@@ -91,13 +90,13 @@ var main = {
     this.tutorial = true;
 
     this.pipes = this.game.add.group();
-    this.pipes.createMultiple(100, 'pipe');
+    this.pipes.createMultiple(20, 'pipe');
 
     this.pipes_up = this.game.add.group();
-    this.pipes_up.createMultiple(100, 'pipe-down');
+    this.pipes_up.createMultiple(10, 'pipe-down');
 
     this.pipes_down = this.game.add.group();
-    this.pipes_down.createMultiple(100, 'pipe-up');
+    this.pipes_down.createMultiple(10, 'pipe-up');
 
     this.space = this.game.input.keyboard.addKey(Phaser.Keyboard.SPACEBAR);
 
@@ -123,7 +122,7 @@ var main = {
   addPipes: function() {
     var rand = Math.random()*height/2 + 200*this.scale;
 
-    var y = this.previous_y ? Math.min(rand, 1.8*this.previous_y) : rand;
+    var y = this.previous_y ? Math.min(rand, 1.7*this.previous_y) : rand;
     this.previous_y = y;
 
     var distance = 120;
@@ -138,8 +137,6 @@ var main = {
       this.game.physics.arcade.enable(p1);
       p1.body.allowGravity = false;
       p1.body.velocity.x = vx;
-
-      p1.outOfBoundsKill = true;
     }
 
     var pu = this.pipes_up.getFirstDead();
@@ -152,8 +149,6 @@ var main = {
       pu.body.velocity.x = vx;
 
       pu.count = false;
-
-      pu.outOfBoundsKill = true;
     }
 
     var pd = this.pipes_down.getFirstDead();
@@ -164,8 +159,6 @@ var main = {
       this.game.physics.arcade.enable(pd);
       pd.body.allowGravity = false;
       pd.body.velocity.x = vx;
-
-      pd.outOfBoundsKill = true;
     }
 
     var p2 = this.pipes.getFirstDead();
@@ -177,8 +170,6 @@ var main = {
       this.game.physics.arcade.enable(p2);
       p2.body.allowGravity = false;
       p2.body.velocity.x = vx;
-
-      p2.outOfBoundsKill = true;
     }
   },
   updateScore: function() {
@@ -188,23 +179,31 @@ var main = {
     this.updateScoreText();
   },
   updateScoreText: function() {
-    for(var i = 0; i < this.digits.length; i++) {
-      this.digits[i].destroy();
-    }
     this.setScoreText();
-    // console.log(this.score);
   },
   setScoreText: function() {
     var text = String(this.score);
     var totalWidth = this.scale * 24 * text.length;
     var posX = width/2 - totalWidth/2;
 
-    this.digits = [];
-    for(var i = 0; i < text.length; i++) {
-      var d = this.game.add.image(posX, 50 * this.scale, 'font_'+text[i]);
-      d.scale.setTo(this.scale, this.scale);
-      this.digits.push(d);
-      posX += 24 * this.scale;
+    if (text.length === this.digits.length) {
+      for (var i = 0; i < text.length; i++) {
+        if (this.digits[i].key[5] != text[i]) {
+          this.digits[i].loadTexture('font_'+text[i]);
+        }
+      }
+    } else {
+      for (var i = 0; i < this.digits.length; i++) {
+        this.digits[i].destroy();
+      }
+
+      this.digits = [];
+      for(var i = 0; i < text.length; i++) {
+        var d = this.game.add.image(posX, 50 * this.scale, 'font_'+text[i]);
+        d.scale.setTo(this.scale, this.scale);
+        this.digits.push(d);
+        posX += 24 * this.scale;
+      }
     }
   },
   jump: function() {
@@ -249,7 +248,17 @@ var main = {
       if (p.x < this.player.x && !p.count) {
         this.updateScore();
         p.count = true;
+      } else if (p.x < -p.width) {
+        p.kill();
       }
+    }, this);
+
+    this.pipes.forEachAlive(function(p) {
+      if (p.x < -p.width) p.kill();
+    }, this);
+
+    this.pipes_down.forEachAlive(function(p) {
+      if (p.x < -p.width) p.kill();
     }, this);
   },
   gameOver: function() {
@@ -285,7 +294,6 @@ var main = {
     }
   },
   startGameOverScreen: function() {
-    this.saveHighScore();
 
     for (var i = 0; i < this.digits.length; i++) {
       this.digits[i].destroy();
@@ -305,6 +313,7 @@ var main = {
     } else {
       medalType = 'medal_bronze';
     }
+
     this.medal = this.game.add.image(width/2 - 65*this.scale, this.game.world.height/2 + 14*this.scale, medalType);
     this.medal.anchor.setTo(0.5, 0.5);
     this.medal.scale.setTo(this.scale, this.scale);
@@ -315,6 +324,8 @@ var main = {
 
     this.replay.inputEnabled = true;
     this.replay.events.onInputDown.add(this.restartLevel, this);
+
+    this.saveHighScore();
 
     var scoreText = String(this.score);
     var posX = width/2 + 87*this.scale;
